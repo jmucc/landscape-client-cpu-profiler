@@ -6,7 +6,7 @@ client_name="profiling-client"
 server_ip=$(lxc list ${server_machine} -c 4 | grep eth0 | awk '{print $2}')
 server_hostname="${server_machine}.lxd"
 
-profiling_time=600
+profiling_time=7200
 
 lxc exec ${client_machine} -- sudo bash -c "echo ${server_ip} ${server_hostname} >> /etc/hosts"
 
@@ -27,11 +27,17 @@ lxc exec ${client_machine} -- sudo landscape-config --silent \
     --urgent-exchange-interval=10 \
     --log-level="debug"
 
-# Start profiling on client for 10min
-lxc exec ${client_machine} -- sudo perf record -a -o /tmp/perf.data sleep ${profiling_time} &
-CLIENT_PID=$!
+# Profile on client
+echo "Starting CPU profiling for ${profiling_time} seconds..."
 
-# Wait for profiling to complete
-wait $CLIENT_PID
+lxc exec ${client_machine} -- bash -c "
+for i in \$(seq 1 ${profiling_time}); 
+do 
+  ps aux > /home/ubuntu/file.txt;
+  grep landscape-package-reporter /home/ubuntu/file.txt | awk '{sum += \$3} END {printf \"%.1f\\n\", sum}' >> /home/ubuntu/cpu_usage.log; 
+  sleep 1; 
+done
+"
 
-lxc file pull ${client_machine}/tmp/perf.data reports/$(date | sed 's/ /-/g')-perf.data
+# Pull results
+lxc file pull ${client_machine}/home/ubuntu/cpu_usage.log ./cpu_usage_$(date | sed 's/ /_/g').log

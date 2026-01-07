@@ -35,7 +35,7 @@ resource "lxd_instance" "server" {
         "0002-install-server" = {
             command = [
                 "/bin/bash", "-c",
-                "DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y landscape-server-quickstart"
+                "DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y landscape-server-quickstart --no-install-recommends"
             ]
             record_output = true
             fail_on_error = true
@@ -54,6 +54,10 @@ resource "lxd_instance" "client" {
     name  = "tf-landscape-client-noble"
     image = lxd_cached_image.noble-vm.fingerprint
     type = "virtual-machine"
+
+    limits = {
+        cpu = 1
+    }
 
     execs = {
       "000-pro-attach" = {
