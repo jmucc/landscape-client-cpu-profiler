@@ -30,14 +30,38 @@ lxc exec ${client_machine} -- sudo landscape-config --silent \
 # Profile on client
 echo "Starting CPU profiling for ${profiling_time} seconds..."
 
-lxc exec ${client_machine} -- bash -c "
-for i in \$(seq 1 ${profiling_time}); 
-do 
-  ps aux > /home/ubuntu/file.txt;
-  grep landscape-package-reporter /home/ubuntu/file.txt | awk '{sum += \$3} END {printf \"%.1f\\n\", sum}' >> /home/ubuntu/cpu_usage.log; 
-  sleep 1; 
+
+for i in $(seq 1 ${profiling_time})
+do
+    # CPU usage
+    lxc exec ${client_machine} -- bash -c "
+        ps aux > /home/ubuntu/file.txt;
+        grep landscape-package-reporter /home/ubuntu/file.txt | awk '{sum += \$3} END {printf \"%.1f\\n\", sum}' >> /home/ubuntu/cpu_usage.log;
+    "
+
+    # Client package DB size
+    lxc exec ${client_machine} -- bash -c "
+        wc /var/lib/landscape/client/package/database | awk '{print \$3}' >> /home/ubuntu/db_size.log
+    "
+
+    # Server package DB counts
+    lxc exec ${server_machine} -- bash -c "
+        sudo -u landscape psql -d landscape-standalone-resource-1 -c \"
+            SELECT CARDINALITY(available) as len_available, 
+                   CARDINALITY(available_upgrades) as len_available_upgrades, 
+                   CARDINALITY(installed) as len_installed, 
+                   CARDINALITY(held) as len_held, 
+                   CARDINALITY(autoremovable) as len_autoremovable, 
+                   CARDINALITY(security) as len_security
+            FROM computer_packages
+            WHERE computer_id=1
+        \" | head -n 3 | tail -n 1 | sed 's/|/,/g' | sed 's/ //g' >> /home/ubuntu/package_counts.log
+    "
+
+    sleep 1
 done
-"
 
 # Pull results
 lxc file pull ${client_machine}/home/ubuntu/cpu_usage.log ./cpu_usage_$(date | sed 's/ /_/g').log
+lxc file pull ${client_machine}/home/ubuntu/db_size.log ./db_size_$(date | sed 's/ /_/g').log  
+lxc file pull ${server_machine}/home/ubuntu/package_counts.log ./package_counts_$(date | sed 's/ /_/g').log
