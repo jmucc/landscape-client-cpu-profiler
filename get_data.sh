@@ -15,7 +15,7 @@ server_machine="profiling-landscape-server"
 server_ip=$(lxc list ${server_machine} -c 4 | grep eth0 | awk '{print $2}')
 server_hostname="${SERVER_CONTAINER_IMAGE_NAME}.lxd"
 client_machine="profiling-landscape-client"
-client_name="cpu-profiling"
+client_lxd_instance_name="cpu-profiling"
 
 lxc exec ${client_machine} -- sudo bash -c "echo ${server_ip} ${server_hostname} >> /etc/hosts"
 
@@ -26,7 +26,7 @@ lxc exec ${client_machine} -- bash -c \
 # Register client with server
 lxc exec ${client_machine} -- sudo landscape-config --silent \
     --account-name="standalone" \
-    --computer-title="${client_name}" \
+    --computer-title="${client_lxd_instance_name}" \
     --registration-key="${REGISTRATION_KEY}" \
     --ping-url="http://${server_hostname}/ping" \
     --url="https://${server_hostname}/message-system" \
@@ -39,7 +39,7 @@ lxc exec ${client_machine} -- sudo landscape-config --silent \
 # Grab client id
 client_id=$(lxc exec ${server_machine} -- bash -c "
     sudo -u landscape psql -d landscape-standalone-main -c \
-    \"SELECT id FROM computer WHERE title='${client_name}'\" | head -n 3 | tail -n 1 | sed 's/ //g'
+    \"SELECT id FROM computer WHERE title='${client_lxd_instance_name}'\" | head -n 3 | tail -n 1 | sed 's/ //g'
 ")
 
 start=$(date)

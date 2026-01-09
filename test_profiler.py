@@ -175,8 +175,8 @@ def test_profile_landscape_client(
     Main profiling test that runs the CPU profiling loop.
     """
     # Extract configuration from fixtures
-    server_machine = registered_client.server_name
-    client_machine = registered_client.client_name
+    server_machine = registered_client.server_lxd_instance_name
+    client_machine = registered_client.client_lxd_instance_name
     client_id = registered_client.client_id
 
     profiling_iterations = profiling_config.iterations

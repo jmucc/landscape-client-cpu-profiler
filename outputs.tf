@@ -1,21 +1,21 @@
-output "server_name" {
+output "server_lxd_instance_name" {
   description = "Name of the LXD server instance"
   value       = lxd_instance.server.name
 }
 
-output "client_name" {
+output "client_lxd_instance_name" {
   description = "Name of the LXD client instance"
   value       = lxd_instance.client.name
 }
 
-output "server_image" {
-  description = "Image used for the server"
-  value       = var.landscape_server_image
+output "server_certificate_hostname" {
+  description = "Hostname on the certificate in the Landscape server image."
+  value       = var.server_certificate_hostname
 }
 
-output "client_image" {
-  description = "Image used for the client"
-  value       = var.landscape_client_image
+output "pro_token" {
+  description = "If provided, a pro token to attach to the client."
+  value       = var.pro_token
 }
 
 output "server_ipv4_address" {
