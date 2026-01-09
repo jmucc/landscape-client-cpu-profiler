@@ -14,7 +14,7 @@ Run the profiler. You can configure the amount of ~1 second iterations by supply
 
 <br />
 
-You will be asked to supply the names of your client and server images. Alternatively you can supply them in `terraform.tfvars` by editing the example filing and renaming it.
+You will be asked to supply the names of your client and server images. Alternatively you can supply them in `terraform.tfvars` by editing the example file and renaming it.
 ```
 mv terraform.tfvars.example terraform.tfvars
 ```
