@@ -12,6 +12,11 @@ from datetime import datetime
 from conftest import RegisteredClient, ProfilingConfig
 
 
+REMOTE_CLIENT_CPU_USAGE_LOG = "/home/ubuntu/cpu_usage.log"
+REMOTE_CLIENT_DB_SIZE_LOG = "/home/ubuntu/db_size.log"
+REMOTE_SERVER_PACKAGE_COUNTS_LOG = "/home/ubuntu/package_counts.log"
+REMOTE_SERVER_PACKAGE_BUFFER_COUNTS_LOG = "/home/ubuntu/package_buffer_counts.log"
+
 
 def collect_client_cpu_usage(client_machine):
     """
@@ -27,7 +32,7 @@ def collect_client_cpu_usage(client_machine):
             "-c",
             "ps aux > /home/ubuntu/file.txt; "
             "grep landscape-package-reporter /home/ubuntu/file.txt | "
-            "awk '{sum += $3} END {printf \"%.1f\\n\", sum}' >> /home/ubuntu/cpu_usage.log",
+            f"awk '{{sum += $3}} END {{printf \"%.1f\\n\", sum}}' >> {REMOTE_CLIENT_CPU_USAGE_LOG}",
         ],
         check=True,
     )
@@ -46,7 +51,7 @@ def collect_client_package_database_size(client_machine):
             "bash",
             "-c",
             "wc /var/lib/landscape/client/package/database | "
-            "awk '{print $3}' >> /home/ubuntu/db_size.log",
+            f"awk '{{print $3}}' >> {REMOTE_CLIENT_DB_SIZE_LOG}",
         ],
         check=True,
     )
@@ -73,7 +78,7 @@ def collect_package_counts_for_client(server_machine, client_id):
             f"CARDINALITY(autoremovable) as len_autoremovable, "
             f"CARDINALITY(security) as len_security "
             f"FROM computer_packages WHERE computer_id={client_id}"
-            f"\" | head -n 3 | tail -n 1 | sed 's/|/,/g' | sed 's/ //g' >> /home/ubuntu/package_counts.log",
+            f"\" | head -n 3 | tail -n 1 | sed 's/|/,/g' | sed 's/ //g' >> {REMOTE_SERVER_PACKAGE_COUNTS_LOG}",
         ],
         check=True,
     )
@@ -106,7 +111,7 @@ def collect_package_buffer_counts_for_client(server_machine, client_id):
             f"CARDINALITY(security) as len_security, "
             f"CARDINALITY(not_security) as len_not_security "
             f"FROM computer_packages_buffer WHERE computer_id={client_id}"
-            f"\" | head -n 3 | tail -n 1 | sed 's/|/,/g' | sed 's/ //g' >> /home/ubuntu/package_buffer_counts.log",
+            f"\" | head -n 3 | tail -n 1 | sed 's/|/,/g' | sed 's/ //g' >> {REMOTE_SERVER_PACKAGE_BUFFER_COUNTS_LOG}",
         ],
         check=True,
     )
@@ -124,8 +129,8 @@ def pull_results(server_machine, client_machine):
 
     # Pull client results
     for log_name, log_file in [
-        ("cpu_usage", "cpu_usage.log"),
-        ("db_size", "db_size.log"),
+        ("cpu_usage", REMOTE_CLIENT_CPU_USAGE_LOG),
+        ("db_size", REMOTE_CLIENT_DB_SIZE_LOG),
     ]:
         local_file = f"./{log_name}_{timestamp}.log"
         subprocess.run(
@@ -142,8 +147,8 @@ def pull_results(server_machine, client_machine):
 
     # Pull server results
     for log_name, log_file in [
-        ("package_counts", "package_counts.log"),
-        ("package_buffer_counts", "package_buffer_counts.log"),
+        ("package_counts", REMOTE_SERVER_PACKAGE_COUNTS_LOG),
+        ("package_buffer_counts", REMOTE_SERVER_PACKAGE_BUFFER_COUNTS_LOG),
     ]:
         local_file = f"./{log_name}_{timestamp}.log"
         subprocess.run(
