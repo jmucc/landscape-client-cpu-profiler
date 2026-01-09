@@ -1,11 +1,21 @@
 #!/bin/bash
+if [ -z "${SERVER_CONTAINER_IMAGE_NAME}" ]; then
+    echo "ERROR: SERVER_CONTAINER_IMAGE_NAME environment variable is not set."
+    exit 1
+fi
+
+if [ -z "${REGISTRATION_KEY}" ]; then
+    echo "ERROR: REGISTRATION_KEY environment variable is not set."
+    exit 1
+fi
+
+profiling_iterations=$1
+
 server_machine="profiling-landscape-server"
 server_ip=$(lxc list ${server_machine} -c 4 | grep eth0 | awk '{print $2}')
-server_hostname="${server_machine}.lxd"
+server_hostname="${SERVER_CONTAINER_IMAGE_NAME}.lxd"
 client_machine="profiling-landscape-client"
 client_name="cpu-profiling"
-
-profiling_iterations=60
 
 lxc exec ${client_machine} -- sudo bash -c "echo ${server_ip} ${server_hostname} >> /etc/hosts"
 
@@ -17,7 +27,7 @@ lxc exec ${client_machine} -- bash -c \
 lxc exec ${client_machine} -- sudo landscape-config --silent \
     --account-name="standalone" \
     --computer-title="${client_name}" \
-    --registration-key="landscape" \
+    --registration-key="${REGISTRATION_KEY}" \
     --ping-url="http://${server_hostname}/ping" \
     --url="https://${server_hostname}/message-system" \
     --ssl-public-key="/etc/landscape/server.pem" \
@@ -26,6 +36,13 @@ lxc exec ${client_machine} -- sudo landscape-config --silent \
     --urgent-exchange-interval=10 \
     --log-level="debug"
 
+# Grab client id
+client_id=$(lxc exec ${server_machine} -- bash -c "
+    sudo -u landscape psql -d landscape-standalone-main -c \
+    \"SELECT id FROM computer WHERE title='${client_name}'\" | head -n 3 | tail -n 1 | sed 's/ //g'
+")
+
+start=$(date)
 echo "Starting CPU profiling for ${profiling_iterations} iterations..."
 for i in $(seq 1 ${profiling_iterations})
 do
@@ -50,7 +67,7 @@ do
                    CARDINALITY(autoremovable) as len_autoremovable, 
                    CARDINALITY(security) as len_security
             FROM computer_packages
-            WHERE computer_id=1
+            WHERE computer_id=${client_id}
         \" | head -n 3 | tail -n 1 | sed 's/|/,/g' | sed 's/ //g' >> /home/ubuntu/package_counts.log
     "
 
@@ -69,15 +86,18 @@ do
                    CARDINALITY(security) as len_security,
                    CARDINALITY(not_security) as len_not_security
             FROM computer_packages_buffer
-            WHERE computer_id=1
+            WHERE computer_id=${client_id}
         \" | head -n 3 | tail -n 1 | sed 's/|/,/g' | sed 's/ //g' >> /home/ubuntu/package_buffer_counts.log
     "
 
-    sleep 1
+    sleep 0.5
 done
+ending=$(date)
+
+echo "CPU profiling completed. Start time: ${start}, End time: ${ending}"
 
 # Pull results
-lxc file pull ${client_machine}/home/ubuntu/cpu_usage.log ./cpu_usage_$(date | sed 's/ /_/g').log
-lxc file pull ${client_machine}/home/ubuntu/db_size.log ./db_size_$(date | sed 's/ /_/g').log  
-lxc file pull ${server_machine}/home/ubuntu/package_counts.log ./package_counts_$(date | sed 's/ /_/g').log
-lxc file pull ${server_machine}/home/ubuntu/package_buffer_counts.log ./package_buffer_counts_$(date | sed 's/ /_/g').log
+lxc file pull ${client_machine}/home/ubuntu/cpu_usage.log ./cpu_usage_$(echo $ending | sed 's/ /_/g').log
+lxc file pull ${client_machine}/home/ubuntu/db_size.log ./db_size_$(echo $ending | sed 's/ /_/g').log  
+lxc file pull ${server_machine}/home/ubuntu/package_counts.log ./package_counts_$(echo $ending | sed 's/ /_/g').log
+lxc file pull ${server_machine}/home/ubuntu/package_buffer_counts.log ./package_buffer_counts_$(echo $ending | sed 's/ /_/g').log

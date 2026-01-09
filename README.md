@@ -1,23 +1,26 @@
-## Landscape Client CPU Profiling
+# Landscape Client CPU Profiling
 
-1. Paste your pro token from https://ubuntu.com/pro/dashboard into `terraform.tfvars.example` and then remove the `.example` extension.
+## Inputs
+* LXD container image of a Landscape Server installation with autoregistration enabled
+  * Export the name of the container as environment variable `SERVER_CONTAINER_IMAGE_NAME` 
+  * Export the registration key as environment variable `REGISTRATION_KEY`
+* LXD VM image of a Landscape Client installation with a pro token attached
+
+## Profiling
+Run the profiler. You can configure the amount of ~1 second iterations by supplying a command line argument.
+```
+./profile.sh [profiling_iterations]
+```
+
+<br />
+
+You will be asked to supply the names of your client and server images. Alternatively you can supply them in `terraform.tfvars` by editing the example filing and renaming it.
 ```
 mv terraform.tfvars.example terraform.tfvars
 ```
-2. Provision architecture with terraform
-```
-terraform init
-terraform apply -auto-approve
-```
-3. Creat an account on the landscape server machine and enable autoregistration with key="landscape"
-4. Publish lxc images for reusability
-```
-./publish.sh
-```
-5. Run the profiler
-```
-./profile.sh
-```
-6. Examine the results in `cpu_usage_<date>.log`
 
-Reset the profiler with fresh client and server lxc machines with `./reset/sh`. This script will tear down your machines and redeploy based on the published images `tf-landscape-server-noble` and `tf-landscape-client-noble`
+## Outputs
+* CPU Usage
+* Client package database size
+* Array lengths from `computer_packages` table
+* Array lengths from `computer_packages_buffer` table
