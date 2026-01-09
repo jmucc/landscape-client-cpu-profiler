@@ -1,20 +1,7 @@
-variable "pro_token" {
-    type        = string
-    sensitive   = true
+variable "landscape_server_image" {
+    type = string
 }
 
-variable "landscape_client_package" {
-    type        = string
-    default     = "landscape-client"
+variable "landscape_client_image" {
+    type = string
 }
-
-variable "client-ppa" {
-    type        = string
-    default     = null
-}
-
-variable "server-ppa" {
-    type        = string
-    default     = "ppa:landscape/self-hosted-beta"
-}
-
