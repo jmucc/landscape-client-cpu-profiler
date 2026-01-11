@@ -9,6 +9,8 @@ import subprocess
 import time
 from datetime import datetime
 
+from tqdm import tqdm
+
 from conftest import RegisteredClient, ProfilingConfig
 
 
@@ -138,7 +140,7 @@ def pull_results(server_machine, client_machine):
                 "lxc",
                 "file",
                 "pull",
-                f"{client_machine}/home/ubuntu/{log_file}",
+                f"{client_machine}/{log_file}",
                 local_file,
             ],
             check=True,
@@ -156,7 +158,7 @@ def pull_results(server_machine, client_machine):
                 "lxc",
                 "file",
                 "pull",
-                f"{server_machine}/home/ubuntu/{log_file}",
+                f"{server_machine}/{log_file}",
                 local_file,
             ],
             check=True,
@@ -174,32 +176,30 @@ def test_profile_landscape_client(
     """
     Main profiling test that runs the CPU profiling loop.
     """
-    # Extract configuration from fixtures
-    server_machine = registered_client.server_lxd_instance_name
-    client_machine = registered_client.client_lxd_instance_name
-    client_id = registered_client.client_id
-
-    profiling_iterations = profiling_config.iterations
 
     start_time = datetime.now()
-    print(f"\nStarting CPU profiling for {profiling_iterations} iterations...")
+    print(f"\nStarting CPU profiling for { profiling_config.iterations} iterations...")
 
-    # Main profiling loop
-    for i in range(1, profiling_iterations + 1):
-        collect_client_cpu_usage(client_machine)
-        collect_client_package_database_size(client_machine)
-        collect_package_counts_for_client(server_machine, client_id)
-        collect_package_buffer_counts_for_client(server_machine, client_id)
-
-        if i % 10 == 0:
-            print(f"  Completed iteration {i}/{profiling_iterations}")
-
+    for _ in tqdm(range(profiling_config.iterations)):
+        collect_client_cpu_usage(registered_client.client_lxd_instance_name)
+        collect_client_package_database_size(registered_client.client_lxd_instance_name)
+        collect_package_counts_for_client(
+            server_machine=registered_client.server_lxd_instance_name,
+            client_id=registered_client.client_id,
+        )
+        collect_package_buffer_counts_for_client(
+            server_machine=registered_client.server_lxd_instance_name,
+            client_id=registered_client.client_id,
+        )
         time.sleep(profiling_config.iteration_delay_seconds)
 
     end_time = datetime.now()
     print(f"CPU profiling completed. Start time: {start_time}, End time: {end_time}")
 
-    results = pull_results(server_machine, client_machine)
+    results = pull_results(
+        server_machine=registered_client.server_lxd_instance_name,
+        client_machine=registered_client.client_lxd_instance_name,
+    )
 
     print(f"\n✅ Profiling test completed successfully!")
     print(f"📁 Results saved:")
