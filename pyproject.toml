@@ -1,0 +1,54 @@
+[tool.poetry]
+name = "landscape-client-cpu-profiler"
+version = "0.1.0"
+description = ""
+authors = []
+package-mode = false
+
+[tool.poetry.dependencies]
+matplotlib = "*"
+numpy = "*"
+pandas = "*"
+python = "^3.11"
+pytest = "^7.0.0"
+tqdm = "*"
+tomli = {version = "*", python = "<3.11"}
+
+[tool.poetry.group.dev.dependencies]
+black = "^24.0.0"
+
+[tool.black]
+line-length = 88
+target-version = ['py38']
+
+[tool.pytest.ini_options]
+addopts = "-v -s --tb=short"
+testpaths = ["."]
+python_files = "test_*.py"
+python_functions = "test_*"
+
+[tool.profiler.profiling]
+iterations = 500
+iteration_delay_seconds = 0.25
+
+[tool.profiler.client]
+computer_title = "cpu-profiler-client"
+ping_interval = 10
+exchange_interval = 10
+urgent_exchange_interval = 10
+log_level = "debug"
+apt_update_interval = 21600
+package_monitor_interval = 1800
+max_unknown_hashes_per_request = 500
+
+[tool.profiler.account]
+landscape_registration_key = "landscapeisgreat"
+admin_email = "admin@example.com"
+admin_password = "admin123"
+
+[tool.profiler.timeouts]
+registration_retries = 3
+client_id_timeout = 30
+
+[tool.profiler.infra]
+keep_infrastructure = false
