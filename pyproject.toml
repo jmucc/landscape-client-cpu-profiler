@@ -6,9 +6,10 @@ authors = []
 package-mode = false
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.11"
 pytest = "^7.0.0"
 tqdm = "*"
+tomli = {version = "*", python = "<3.11"}
 
 [tool.poetry.group.dev.dependencies]
 black = "^24.0.0"
@@ -22,3 +23,23 @@ addopts = "-v -s --tb=short"
 testpaths = ["."]
 python_files = "test_*.py"
 python_functions = "test_*"
+
+[tool.profiler.profiling]
+iterations = 3600
+iteration_delay_seconds = 0.5
+
+[tool.profiler.client]
+landscape_registration_key = "landscapeisgreat"
+account_name = "standalone"
+computer_title = "cpu-profiler-client"
+ping_interval = 10
+exchange_interval = 10
+urgent_exchange_interval = 10
+log_level = "debug"
+
+[tool.profiler.timeouts]
+registration_retries = 3
+client_id_timeout = 30
+
+[tool.profiler.infra]
+keep_infrastructure = false

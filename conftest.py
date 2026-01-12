@@ -9,9 +9,27 @@ import json
 import os
 import subprocess
 import time
-from typing import Generator
+from pathlib import Path
+from typing import Any, Dict, Generator
 from dataclasses import dataclass
 import pytest
+import tomllib
+
+
+def load_profiler_config() -> Dict[str, Any]:
+    """
+    Load profiler configuration from pyproject.toml.
+    """
+    pyproject_path = Path(__file__).parent / "pyproject.toml"
+
+    with open(pyproject_path, "rb") as f:
+        pyproject_data = tomllib.load(f)
+
+    profiler_config = pyproject_data.get("tool", {}).get("profiler", {})
+
+    assert profiler_config, "Missing tool.profiler configuration in pyproject.toml"
+
+    return profiler_config
 
 
 @dataclass
@@ -116,8 +134,49 @@ class ClientConfig:
     log_level: str = "debug"
 
 
+@dataclass
+class InfraConfig:
+    """
+    Configuration for the infrastructure used in the test.
+    """
+
+    keep_infrastructure: bool
+
+
 @pytest.fixture(scope="session")
-def terraform_outputs() -> Generator[TerraformOutputs, None, None]:
+def profiling_config() -> ProfilingConfig:
+    """
+    Parse `profiler` configuration from the pyproject.toml
+    """
+    config = load_profiler_config()
+    profiling_data = config.get("profiling", {})
+    return ProfilingConfig(**profiling_data)
+
+
+@pytest.fixture(scope="session")
+def client_config() -> ClientConfig:
+    """
+    Parse `client` configuration from the pyproject.toml
+    """
+    config = load_profiler_config()
+    client_data = config.get("client", {})
+    return ClientConfig(**client_data)
+
+
+@pytest.fixture(scope="session")
+def infra_config() -> InfraConfig:
+    """
+    Parse `infra` configuration from the pyproject.toml
+    """
+    config = load_profiler_config()
+    terraform_config = config.get("infra", {})
+    return InfraConfig(**terraform_config)
+
+
+@pytest.fixture(scope="session")
+def terraform_outputs(
+    infra_config: InfraConfig,
+) -> Generator[TerraformOutputs, None, None]:
     """
     Deploy Terraform infrastructure and return outputs.
     """
@@ -152,26 +211,14 @@ def terraform_outputs() -> Generator[TerraformOutputs, None, None]:
 
     yield outputs
 
-    if os.getenv("KEEP_TERRAFORM_INFRA"):
+    if infra_config.keep_infrastructure:
         print("\nNot tearing down Terraform infastructure.")
     else:
         print("\n🧹 Tearing down Terraform infrastructure...")
         subprocess.run(
             ["terraform", "destroy", "-auto-approve"], check=True, cwd=os.getcwd()
         )
-        print(
-            "✅ Infrastructure cleaned up. Use `KEEP_TERRAFORM_INFRA` to skip teardown."
-        )
-
-
-@pytest.fixture(scope="session")
-def profiling_config() -> ProfilingConfig:
-    return ProfilingConfig()
-
-
-@pytest.fixture(scope="session")
-def client_config() -> ClientConfig:
-    return ClientConfig()
+        print("✅ Infrastructure cleaned up.")
 
 
 def get_client_id(server_machine: str, computer_title: str, timeout: int = 30) -> int:

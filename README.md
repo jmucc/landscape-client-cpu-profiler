@@ -16,29 +16,44 @@ You'll need to create Landscape server and client images in LXD. These are requi
 
 ### Landscape client
 
-TODO write docs
+Example client image creation:
+
+```bash
+lxc launch ubuntu:noble client --vm
+lxc exec client -- apt install -y landscape-client
+lxc stop client
+lxc publish client --alias client-image
+```
+
+You would use `client-image` in the Terraform inputs.
+
+>[!NOTE]
+>You may also attach a pro token in the image instead of providing one in the Terraform inputs.
 
 ### Landscape server
 
-TODO write docs
+Example server image creation:
 
-## Inputs
+```bash
+lxc launch ubuntu:noble server
+lxc exec server -- add-apt-repository -y ppa:landscape/self-hosted-daily
+lxc exec server -- DEBIAN_FRONTEND=noninteractive apt install landscape-server-quickstart
+lxc stop server
+lxc publish server --alias server-image
+```
 
-See `variables.tf` for required inputs.
+You would use `server-image` in the Terraform inputs.
+
+## Inputs and configuration
+
+See `variables.tf` for required Terraform inputs. See `pyproject.toml` for configuration options for the profiler tool.
 
 ## Profiling
 
-```bash
-# Set environment variables
+Run the profiling tests using `poetry` and `pytest`:
 
-# Run the profiling test
+```bash
 poetry run pytest test_profiler.py
-```
-
-Infrastructure will automatically be torn down after a test run. Use `KEEP_TERRAFORM_INFRA` to keep infrastructure up after the test run finishes.
-
-```bash
-KEEP_TERRAFORM_INFRA=1 poetry run pytest test_profiler.py
 ```
 
 ## Outputs
