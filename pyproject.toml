@@ -28,7 +28,7 @@ python_files = "test_*.py"
 python_functions = "test_*"
 
 [tool.profiler.profiling]
-iterations = 250
+iterations = 500
 iteration_delay_seconds = 0.25
 
 [tool.profiler.client]
@@ -39,7 +39,7 @@ urgent_exchange_interval = 10
 log_level = "debug"
 apt_update_interval = 21600
 package_monitor_interval = 1800
-max_unknown_hashes_per_request = 2000
+max_unknown_hashes_per_request = 500
 
 [tool.profiler.account]
 landscape_registration_key = "landscapeisgreat"

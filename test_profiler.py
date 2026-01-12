@@ -5,6 +5,7 @@ Pytest-based profiler for Landscape client CPU usage.
 import json
 import subprocess
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, asdict
 from datetime import datetime
 from pathlib import Path
@@ -227,16 +228,32 @@ def test_profile_landscape_client(
     print(f"\nStarting CPU profiling for { profiling_config.iterations} iterations...")
 
     for _ in tqdm(range(profiling_config.iterations)):
-        collect_client_cpu_usage(registered_client.client_lxd_instance_name)
-        collect_client_package_database_size(registered_client.client_lxd_instance_name)
-        collect_package_counts_for_client(
-            server_machine=registered_client.server_lxd_instance_name,
-            client_id=registered_client.client_id,
-        )
-        collect_package_buffer_counts_for_client(
-            server_machine=registered_client.server_lxd_instance_name,
-            client_id=registered_client.client_id,
-        )
+        # Run all data collection operations concurrently
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            futures = [
+                executor.submit(
+                    collect_client_cpu_usage,
+                    registered_client.client_lxd_instance_name,
+                ),
+                executor.submit(
+                    collect_client_package_database_size,
+                    registered_client.client_lxd_instance_name,
+                ),
+                executor.submit(
+                    collect_package_counts_for_client,
+                    registered_client.server_lxd_instance_name,
+                    registered_client.client_id,
+                ),
+                executor.submit(
+                    collect_package_buffer_counts_for_client,
+                    registered_client.server_lxd_instance_name,
+                    registered_client.client_id,
+                ),
+            ]
+            # Wait for all to complete and raise any exceptions
+            for future in futures:
+                future.result()
+
         time.sleep(profiling_config.iteration_delay_seconds)
 
     end_time = datetime.now()
