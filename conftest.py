@@ -152,14 +152,16 @@ def terraform_outputs() -> Generator[TerraformOutputs, None, None]:
 
     yield outputs
 
-    if os.getenv("TEARDOWN_TERRAFORM_INFRA"):
+    if os.getenv("KEEP_TERRAFORM_INFRA"):
+        print("\nNot tearing down Terraform infastructure.")
+    else:
         print("\n🧹 Tearing down Terraform infrastructure...")
         subprocess.run(
             ["terraform", "destroy", "-auto-approve"], check=True, cwd=os.getcwd()
         )
-        print("✅ Infrastructure cleaned up")
-    else:
-        print("\nNot tearing down Terraform infastructure.")
+        print(
+            "✅ Infrastructure cleaned up. Use `KEEP_TERRAFORM_INFRA` to skip teardown."
+        )
 
 
 @pytest.fixture(scope="session")
