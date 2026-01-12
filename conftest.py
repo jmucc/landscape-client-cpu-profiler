@@ -455,6 +455,27 @@ def bootstrap_account(
                 check=True,
             )
             print(f"✅ Account bootstrapped successfully")
+
+            # Enable auto-registration for the account
+            print("Enabling auto-registration...")
+            subprocess.run(
+                [
+                    "lxc",
+                    "exec",
+                    server_lxd_instance_name,
+                    "--",
+                    "sudo",
+                    "-u",
+                    "landscape",
+                    "psql",
+                    "-d",
+                    "landscape-standalone-main",
+                    "-c",
+                    "UPDATE account SET auto_register_new_computers = true WHERE name = 'standalone';",
+                ],
+                check=True,
+            )
+            print(f"✅ Auto-registration enabled")
             return
         except subprocess.CalledProcessError as e:
             print(

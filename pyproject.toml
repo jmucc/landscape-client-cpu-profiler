@@ -45,4 +45,4 @@ registration_retries = 3
 client_id_timeout = 30
 
 [tool.profiler.infra]
-keep_infrastructure = true
+keep_infrastructure = false
