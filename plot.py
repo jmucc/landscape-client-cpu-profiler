@@ -1,7 +1,6 @@
-#!/usr/bin/env python3
 """
 Plot profiling data from a results directory.
-Loads CPU usage, database size, and package counts with normalized scale.
+Loads CPU usage, database size, and package counts.
 """
 
 import argparse

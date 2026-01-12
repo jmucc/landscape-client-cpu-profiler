@@ -1,5 +1,7 @@
 # Landscape Client CPU Profiling
 
+This project analyzes Landscape client's CPU usage when reporting packages to Landscape server. It uses Terraform to set up the client and server and pytest to drive configuration and data collection.
+
 ## Setup
 
 This project uses `poetry` to manage dependencies.
@@ -80,7 +82,7 @@ eZCo0j4/Q9NbFWLgg3UUkvVYHXIZITk0xYZfmWMNKdEYg5FjGAljhRUOHp6Mv6Uv
 
 ## Inputs and configuration
 
-See `variables.tf` and `terraform.tfvars.example` for required Terraform inputs and examples of those inputs. See `pyproject.toml` for configuration options for the profiler tool.
+See `variables.tf` and `terraform.tfvars.example` for required Terraform inputs and examples of those inputs. See `pyproject.toml` for configuration options for the profiler tool and Landsacpe client.
 
 ## Profiling
 

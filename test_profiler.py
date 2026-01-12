@@ -1,19 +1,17 @@
 """
 Pytest-based profiler for Landscape client CPU usage.
-
-This is an incremental conversion from get_data.sh to make the profiling
-process more maintainable using pytest fixtures.
 """
 
+import json
 import subprocess
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from datetime import datetime
 from pathlib import Path
 
 from tqdm import tqdm
 
-from conftest import RegisteredClient, ProfilingConfig
+from conftest import RegisteredClient, ProfilingConfig, ClientConfig
 
 
 # Remote log paths on LXD instances
@@ -204,18 +202,22 @@ def pull_results(server_machine, client_machine):
     )
 
     print("✅ Results retrieved successfully")
-    return ProfilingResults(
-        cpu_usage=cpu_usage_file,
-        db_size=db_size_file,
-        package_counts=package_counts_file,
-        package_buffer_counts=package_buffer_counts_file,
-        timestamp=timestamp,
+    return (
+        ProfilingResults(
+            cpu_usage=cpu_usage_file,
+            db_size=db_size_file,
+            package_counts=package_counts_file,
+            package_buffer_counts=package_buffer_counts_file,
+            timestamp=timestamp,
+        ),
+        results_dir,
     )
 
 
 def test_profile_landscape_client(
     registered_client: RegisteredClient,
     profiling_config: ProfilingConfig,
+    client_config: ClientConfig,
 ):
     """
     Main profiling test that runs the CPU profiling loop.
@@ -240,10 +242,22 @@ def test_profile_landscape_client(
     end_time = datetime.now()
     print(f"CPU profiling completed. Start time: {start_time}, End time: {end_time}")
 
-    results = pull_results(
+    results, results_dir = pull_results(
         server_machine=registered_client.server_lxd_instance_name,
         client_machine=registered_client.client_lxd_instance_name,
     )
+
+    # Save test parameters to JSON
+    test_params = {
+        "profiling": asdict(profiling_config),
+        "client": asdict(client_config),
+        "start_time": start_time.isoformat(),
+        "end_time": end_time.isoformat(),
+    }
+
+    params_file = results_dir / "test_parameters.json"
+    with open(params_file, "w") as f:
+        json.dump(test_params, f, indent=2)
 
     print(f"\n✅ Profiling test completed successfully!")
     print(f"📁 Results saved:")
@@ -251,3 +265,4 @@ def test_profile_landscape_client(
     print(f"   - db_size: {results.db_size}")
     print(f"   - package_counts: {results.package_counts}")
     print(f"   - package_buffer_counts: {results.package_buffer_counts}")
+    print(f"   - test_parameters: {params_file}")

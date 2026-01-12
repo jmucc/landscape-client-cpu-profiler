@@ -28,8 +28,8 @@ python_files = "test_*.py"
 python_functions = "test_*"
 
 [tool.profiler.profiling]
-iterations = 1000
-iteration_delay_seconds = 0.5
+iterations = 250
+iteration_delay_seconds = 0.25
 
 [tool.profiler.client]
 computer_title = "cpu-profiler-client"
@@ -37,6 +37,9 @@ ping_interval = 10
 exchange_interval = 10
 urgent_exchange_interval = 10
 log_level = "debug"
+apt_update_interval = 21600
+package_monitor_interval = 1800
+max_unknown_hashes_per_request = 2000
 
 [tool.profiler.account]
 landscape_registration_key = "landscapeisgreat"

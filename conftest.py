@@ -16,6 +16,9 @@ import pytest
 import tomllib
 
 
+STANDALONE_ACCOUNT = "standalone"
+
+
 def load_profiler_config() -> Dict[str, Any]:
     """
     Load profiler configuration from pyproject.toml.
@@ -130,6 +133,9 @@ class ClientConfig:
     exchange_interval: int = 10
     urgent_exchange_interval: int = 10
     log_level: str = "debug"
+    apt_update_interval: int = 21600
+    package_monitor_interval: int = 1800
+    max_unknown_hashes_per_request: int = 500
 
 
 @dataclass
@@ -270,14 +276,55 @@ def get_client_id(server_machine: str, computer_title: str, timeout: int = 30) -
     )
 
 
-def register_landscape_client(
+def write_landscape_client_config(
     client_lxd_instance_name: str,
     client_computer_title: str,
     registration_key: str,
     server_certificate_hostname: str,
+    client_config: ClientConfig,
+) -> None:
+    """
+    Write Landscape client configuration to /etc/landscape/client.conf.
+
+    Not all configuration options are available when registering, so this exposes more
+    configuration options.
+    """
+    config_content = f"""[client]
+computer_title = {client_computer_title}
+account_name = {STANDALONE_ACCOUNT}
+registration_key = {registration_key}
+ping_url = http://{server_certificate_hostname}/ping
+url = https://{server_certificate_hostname}/message-system
+ssl_public_key = /etc/landscape/server.pem
+ping_interval = {client_config.ping_interval}
+exchange_interval = {client_config.exchange_interval}
+urgent_exchange_interval = {client_config.urgent_exchange_interval}
+log_level = {client_config.log_level}
+apt_update_interval = {client_config.apt_update_interval}
+package_monitor_interval = {client_config.package_monitor_interval}
+max_unknown_hashes_per_request = {client_config.max_unknown_hashes_per_request}
+"""
+
+    # Write config file to the client instance
+    subprocess.run(
+        [
+            "lxc",
+            "exec",
+            client_lxd_instance_name,
+            "--",
+            "bash",
+            "-c",
+            f"echo '{config_content}' | sudo tee /etc/landscape/client.conf > /dev/null",
+        ],
+        check=True,
+    )
+
+
+def register_landscape_client(
+    client_lxd_instance_name: str,
     max_retries: int = 3,
 ) -> None:
-    """Register client with Landscape server."""
+    """Register client with Landscape server using config file."""
     for attempt in range(max_retries):
         try:
             subprocess.run(
@@ -289,16 +336,8 @@ def register_landscape_client(
                     "sudo",
                     "landscape-config",
                     "--silent",
-                    f"--account-name=standalone",
-                    f"--computer-title={client_computer_title}",
-                    f"--registration-key={registration_key}",
-                    f"--ping-url=http://{server_certificate_hostname}/ping",
-                    f"--url=https://{server_certificate_hostname}/message-system",
-                    "--ssl-public-key=/etc/landscape/server.pem",
-                    "--ping-interval=10",
-                    "--exchange-interval=10",
-                    "--urgent-exchange-interval=10",
-                    "--log-level=debug",
+                    "--config",
+                    "/etc/landscape/client.conf",
                 ],
                 check=True,
             )
@@ -380,19 +419,24 @@ def registered_client(
                 "pro",
                 "attach",
                 pro_token,
+                "--no-auto-enable",
             ],
             check=True,
         )
     else:
         print("Not attaching pro token. Assuming client image is entitled.")
 
-    # Register client with server
-    register_landscape_client(
+    # Write client configuration file
+    write_landscape_client_config(
         client_lxd_instance_name,
         client_computer_title,
         registration_key,
         server_certificate_hostname,
+        client_config,
     )
+
+    # Register client with server
+    register_landscape_client(client_lxd_instance_name)
 
     print("⏳ Waiting for client to appear in database...")
 
