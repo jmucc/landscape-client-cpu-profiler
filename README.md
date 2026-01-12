@@ -90,6 +90,16 @@ Run the profiling tests using `poetry` and `pytest`:
 poetry run pytest test_profiler.py
 ```
 
-## Outputs
+## Analysis
 
-Data will be collected in a `results/` directory. Subsequent runs will create a new timestamped directory.
+Data will be collected in a `results/` directory. Subsequent runs will create a new timestamped directory. Visualize the data with the plot:
+
+```bash
+poetry run python plot.py
+```
+
+By default this will use the most recent data in `results/`. Pass a path in results to use another run:
+
+```bash
+poetry run python plot.py results/Mon_Jan_12_15:12:11
+```

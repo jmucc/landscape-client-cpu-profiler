@@ -6,6 +6,9 @@ authors = []
 package-mode = false
 
 [tool.poetry.dependencies]
+matplotlib = "*"
+numpy = "*"
+pandas = "*"
 python = "^3.11"
 pytest = "^7.0.0"
 tqdm = "*"
@@ -25,7 +28,7 @@ python_files = "test_*.py"
 python_functions = "test_*"
 
 [tool.profiler.profiling]
-iterations = 100
+iterations = 1000
 iteration_delay_seconds = 0.5
 
 [tool.profiler.client]
