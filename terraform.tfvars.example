@@ -1,2 +1,4 @@
 landscape_server_image = "26.04.beta2-norecc"
 landscape_client_image = "noble-archive-client"
+server_certificate_hostname = "some-server.lxd"
+pro_token = "some-pro-token"

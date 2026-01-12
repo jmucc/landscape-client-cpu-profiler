@@ -125,8 +125,6 @@ class ClientConfig:
     Configuration for the client machine used in the profiling run.
     """
 
-    landscape_registration_key: str = "landscapeisgreat"
-    account_name: str = "standalone"
     computer_title: str = "cpu-profiler-client"
     ping_interval: int = 10
     exchange_interval: int = 10
@@ -141,6 +139,19 @@ class InfraConfig:
     """
 
     keep_infrastructure: bool
+
+
+@dataclass
+class AccountConfig:
+    """
+    Configuration for bootstrapping the Landscape account.
+    """
+
+    landscape_registration_key: str = "landscapeisgreat"
+    admin_email: str = "admin@example.com"
+    admin_name: str = "Admin User"
+    admin_password: str = "admin123"
+    system_email: str = "landscape@example.com"
 
 
 @pytest.fixture(scope="session")
@@ -278,7 +289,7 @@ def register_landscape_client(
                     "sudo",
                     "landscape-config",
                     "--silent",
-                    "--account-name=standalone",
+                    f"--account-name=standalone",
                     f"--computer-title={client_computer_title}",
                     f"--registration-key={registration_key}",
                     f"--ping-url=http://{server_certificate_hostname}/ping",
@@ -306,6 +317,8 @@ def register_landscape_client(
 def registered_client(
     terraform_outputs: TerraformOutputs,
     client_config: ClientConfig,
+    account_config: AccountConfig,
+    bootstrap_account,
 ) -> RegisteredClient:
     """
     Register the client with the Landscape server.
@@ -322,7 +335,7 @@ def registered_client(
     server_ip = terraform_outputs.server_ipv4_address
     server_certificate_hostname = terraform_outputs.server_certificate_hostname
     client_computer_title = client_config.computer_title
-    registration_key = client_config.landscape_registration_key
+    registration_key = account_config.landscape_registration_key
 
     print(f"\n📝 Registering client '{client_computer_title}' with server...")
 
@@ -392,3 +405,68 @@ def registered_client(
         client_lxd_instance_name=client_lxd_instance_name,
         client_id=client_id,
     )
+
+
+@pytest.fixture(scope="session")
+def account_config() -> AccountConfig:
+    config = load_profiler_config()
+    account_data = config.get("account", {})
+    return AccountConfig(**account_data)
+
+
+@pytest.fixture(scope="session")
+def bootstrap_account(
+    terraform_outputs: TerraformOutputs,
+    account_config: AccountConfig,
+) -> None:
+    """
+    Create the first Landscape account on the server.
+    """
+    BOOTSTRAP_ACCOUNT_SCRIPT = "/opt/canonical/landscape/bootstrap-account"
+    server_lxd_instance_name = terraform_outputs.server_lxd_instance_name
+    server_hostname = terraform_outputs.server_certificate_hostname
+    root_url = f"https://{server_hostname}"
+    max_retries = 3
+
+    print(f"\n🔐 Bootstrapping Landscape account on server...")
+
+    for attempt in range(max_retries):
+        try:
+            subprocess.run(
+                [
+                    "lxc",
+                    "exec",
+                    server_lxd_instance_name,
+                    "--",
+                    BOOTSTRAP_ACCOUNT_SCRIPT,
+                    "--admin_email",
+                    account_config.admin_email,
+                    "--admin_name",
+                    account_config.admin_name,
+                    "--admin_password",
+                    account_config.admin_password,
+                    "--registration_key",
+                    account_config.landscape_registration_key,
+                    "--root_url",
+                    root_url,
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            print(f"✅ Account bootstrapped successfully")
+            return
+        except subprocess.CalledProcessError as e:
+            print(
+                f"   Bootstrap attempt {attempt + 1} failed (exit code {e.returncode})"
+            )
+            print(f"   stdout: {e.stdout}")
+            print(f"   stderr: {e.stderr}")
+            if attempt < max_retries - 1:
+                print(f"   Retrying in 5 seconds...")
+                time.sleep(5)
+            else:
+                raise RuntimeError(
+                    f"Failed to bootstrap account after {max_retries} attempts. "
+                    f"Last error: {e.stderr}"
+                ) from e
