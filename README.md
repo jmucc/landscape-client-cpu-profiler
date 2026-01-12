@@ -1,26 +1,24 @@
 # Landscape Client CPU Profiling
 
+## Setup
+
+```bash
+# Install poetry if needed
+pip install poetry
+
+# Install project dependencies (automatically creates and manages venv)
+poetry install
+```
+
 ## Inputs
-* LXD container image of a Landscape Server installation with autoregistration enabled
-  * Export the name of the container as environment variable `SERVER_CONTAINER_IMAGE_NAME` 
-  * Export the registration key as environment variable `REGISTRATION_KEY`
-* LXD VM image of a Landscape Client installation with a pro token attached
+
+See `variables.tf` for required inputs.
 
 ## Profiling
-Run the profiler. You can configure the amount of ~1 second iterations by supplying a command line argument.
-```
-./profile.sh [profiling_iterations]
-```
 
-<br />
+```bash
+# Set environment variables
 
-You will be asked to supply the names of your client and server images. Alternatively you can supply them in `terraform.tfvars` by editing the example file and renaming it.
+# Run the profiling test
+poetry run pytest test_profiler.py
 ```
-mv terraform.tfvars.example terraform.tfvars
-```
-
-## Outputs
-* CPU Usage
-* Client package database size
-* Array lengths from `computer_packages` table
-* Array lengths from `computer_packages_buffer` table

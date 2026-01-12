@@ -6,5 +6,5 @@ resource lxd_instance server {
 resource lxd_instance client {
     name = "profiling-landscape-client"
     image = var.landscape_client_image
-    type = "virtual-machine"
+    # type = "virtual-machine"
 }
