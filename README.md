@@ -34,12 +34,14 @@ You would use `client-image` in the Terraform inputs.
 
 ### Landscape server
 
+Install Landscape server without the HashIDs database to include a greater number of unknown packages during the package reporting process.
+
 Example server image creation:
 
 ```bash
 lxc launch ubuntu:noble server
 lxc exec server -- add-apt-repository -y ppa:landscape/self-hosted-daily
-lxc exec server -- DEBIAN_FRONTEND=noninteractive apt install landscape-server-quickstart
+lxc exec server -- apt install landscape-server-quickstart --no-install-recommends
 lxc stop server
 lxc publish server --alias server-image
 ```
@@ -105,3 +107,11 @@ By default this will use the most recent data in `results/`. Pass a path in resu
 ```bash
 poetry run python plot.py results/Mon_Jan_12_15:12:11
 ```
+
+The area under the CPU%-per-second graph can be used as an approximate comparison of CPU efficiency between different package reporting scenarios. Use the following script to calculate:
+
+```bash
+poetry run python calculate_cpu_seconds.py results/Mon_Jan_12_15:12:11
+```
+
+A higher number indicates more CPU usage during the package reporting process. For an accurate comparison, ensure that package reporting has finished. This is indicated when the package data for the client machine reaches a steady state.

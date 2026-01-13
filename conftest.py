@@ -17,6 +17,7 @@ import tomllib
 
 
 STANDALONE_ACCOUNT = "standalone"
+SSL_CERT_PATH = "/etc/landscape/server.crt"
 
 
 def load_profiler_config() -> Dict[str, Any]:
@@ -307,7 +308,7 @@ account_name = {STANDALONE_ACCOUNT}
 registration_key = {registration_key}
 ping_url = http://{server_certificate_hostname}/ping
 url = https://{server_certificate_hostname}/message-system
-ssl_public_key = /etc/landscape/server.pem
+ssl_public_key = {SSL_CERT_PATH}
 ping_interval = {client_config.ping_interval}
 exchange_interval = {client_config.exchange_interval}
 urgent_exchange_interval = {client_config.urgent_exchange_interval}
@@ -415,7 +416,7 @@ def registered_client(
             "bash",
             "-c",
             f"echo | openssl s_client -connect {server_certificate_hostname}:443 | "
-            f"openssl x509 | sudo tee /etc/landscape/server.pem",
+            f"openssl x509 | sudo tee {SSL_CERT_PATH}",
         ],
         check=True,
     )
