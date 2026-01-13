@@ -10,21 +10,25 @@ import pandas as pd
 
 
 def load_single_value_file(filepath):
-    """Load a file where each line contains a single numeric value."""
+    """Load a file where each line contains 'timestamp,value' format."""
+    timestamps = []
     values = []
     with open(filepath, "r") as f:
         for line in f:
             line = line.strip()
             if line:
                 try:
-                    values.append(float(line))
-                except ValueError:
+                    parts = line.split(",")
+                    timestamps.append(float(parts[0]))
+                    values.append(float(parts[1]))
+                except (ValueError, IndexError):
                     continue
-    return values
+    return timestamps, values
 
 
 def load_comma_delimited_file(filepath):
-    """Load a file where each line contains comma-delimited values and sum them."""
+    """Load a file where each line contains 'timestamp,value1,value2,...' format and sum the values."""
+    timestamps = []
     values = []
     with open(filepath, "r") as f:
         for line in f:
@@ -33,20 +37,23 @@ def load_comma_delimited_file(filepath):
                 continue
 
             if line == "(0rows)":
-                values.append(0.0)
                 continue
 
             try:
-                nums = [float(n.strip()) for n in line.split(",")]
-                values.append(sum(nums))
-            except ValueError:
+                parts = line.split(",")
+                timestamp = float(parts[0])
+                # Sum all values after the timestamp
+                value_sum = sum(float(n.strip()) for n in parts[1:])
+                timestamps.append(timestamp)
+                values.append(value_sum)
+            except (ValueError, IndexError):
                 continue
 
-    return values
+    return timestamps, values
 
 
 def load_results_directory(results_dir):
-    """Load all log files from a results directory into a pandas DataFrame."""
+    """Load all log files from a results directory into a pandas DataFrame with timestamps as index."""
     results_path = Path(results_dir)
 
     files = {
@@ -59,14 +66,36 @@ def load_results_directory(results_dir):
         ),
     }
 
-    data = {}
+    # Load all data with timestamps
+    all_data = {}
     for column_name, (filename, loader_func) in files.items():
         filepath = results_path / filename
         if not filepath.exists():
             raise FileNotFoundError(f"Expected file not found: {filepath}")
-        data[column_name] = loader_func(filepath)
+        timestamps, values = loader_func(filepath)
+        all_data[column_name] = {"timestamps": timestamps, "values": values}
 
-    return pd.DataFrame(data)
+    # Find a common timestamp set (use cpu_usage as reference)
+    if not all_data["cpu_usage"]["timestamps"]:
+        raise ValueError("No data found in cpu_usage.log")
+
+    # Create DataFrame with timestamps as index
+    data_dict = {}
+    reference_timestamps = all_data["cpu_usage"]["timestamps"]
+
+    for column_name in files.keys():
+        # Create a series indexed by timestamp
+        series = pd.Series(
+            all_data[column_name]["values"],
+            index=all_data[column_name]["timestamps"],
+            name=column_name,
+        )
+        data_dict[column_name] = series
+
+    # Create DataFrame and reindex to common timestamps
+    df = pd.DataFrame(data_dict)
+
+    return df
 
 
 def normalize_series(series):
@@ -86,6 +115,7 @@ def plot_dataframe(df, output_file="plot.png"):
 
     # Top plot: CPU usage (raw percentage)
     ax1.plot(
+        df.index,
         df["cpu_usage"],
         linestyle="-",
         linewidth=1.5,
@@ -100,6 +130,7 @@ def plot_dataframe(df, output_file="plot.png"):
 
     # Middle plot: Package counts
     ax2.plot(
+        df.index,
         df["package_counts"],
         linestyle="-",
         linewidth=1.5,
@@ -108,6 +139,7 @@ def plot_dataframe(df, output_file="plot.png"):
         color="tab:green",
     )
     ax2.plot(
+        df.index,
         df["package_buffer_counts"],
         linestyle="-",
         linewidth=1.5,
@@ -122,6 +154,7 @@ def plot_dataframe(df, output_file="plot.png"):
 
     # Bottom plot: Database size
     ax3.plot(
+        df.index,
         df["db_size"],
         linestyle="-",
         linewidth=1.5,
@@ -129,7 +162,7 @@ def plot_dataframe(df, output_file="plot.png"):
         label="DB Size",
         color="tab:blue",
     )
-    ax3.set_xlabel("Iteration")
+    ax3.set_xlabel("Time (seconds)")
     ax3.set_ylabel("Client database Size")
     ax3.set_title("Client database Size Over Time")
     ax3.legend()

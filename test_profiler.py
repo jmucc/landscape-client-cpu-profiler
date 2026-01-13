@@ -36,9 +36,9 @@ class ProfilingResults:
     timestamp: datetime
 
 
-def collect_client_cpu_usage(client_machine):
+def collect_client_cpu_usage(client_machine, elapsed_seconds):
     """
-    Collect CPU usage statistics for the client.
+    Collect CPU usage statistics for the client with timestamp.
     """
     subprocess.run(
         [
@@ -50,15 +50,15 @@ def collect_client_cpu_usage(client_machine):
             "-c",
             "ps aux > /home/ubuntu/file.txt; "
             "grep landscape-package-reporter /home/ubuntu/file.txt | "
-            f"awk '{{sum += $3}} END {{printf \"%.1f\\n\", sum}}' >> {REMOTE_CLIENT_CPU_USAGE_LOG}",
+            f"awk '{{sum += $3}} END {{printf \"{elapsed_seconds},%.1f\\n\", sum}}' >> {REMOTE_CLIENT_CPU_USAGE_LOG}",
         ],
         check=True,
     )
 
 
-def collect_client_package_database_size(client_machine):
+def collect_client_package_database_size(client_machine, elapsed_seconds):
     """
-    Collect the size of the client's local package database.
+    Collect the size of the client's local package database with timestamp.
     """
     subprocess.run(
         [
@@ -69,16 +69,16 @@ def collect_client_package_database_size(client_machine):
             "bash",
             "-c",
             "wc /var/lib/landscape/client/package/database | "
-            f"awk '{{print $3}}' >> {REMOTE_CLIENT_DB_SIZE_LOG}",
+            f"awk '{{printf \"{elapsed_seconds},%s\\n\", $3}}' >> {REMOTE_CLIENT_DB_SIZE_LOG}",
         ],
         check=True,
     )
 
 
-def collect_package_counts_for_client(server_machine, client_id):
+def collect_package_counts_for_client(server_machine, client_id, elapsed_seconds):
     """
     Collect package counts for computer with ID `client_id` from the server_machine's
-    `computer_packages` table.
+    `computer_packages` table with timestamp.
 
     NOTE: cd /tmp to avoid annoying output from psql trying to set homedir
     """
@@ -98,16 +98,18 @@ def collect_package_counts_for_client(server_machine, client_id):
             f"CARDINALITY(autoremovable) as len_autoremovable, "
             f"CARDINALITY(security) as len_security "
             f"FROM computer_packages WHERE computer_id={client_id}"
-            f"\" | head -n 3 | tail -n 1 | sed 's/|/,/g' | sed 's/ //g' >> {REMOTE_SERVER_PACKAGE_COUNTS_LOG}",
+            f"\" | head -n 3 | tail -n 1 | sed 's/|/,/g' | sed 's/ //g' | sed 's/^/{elapsed_seconds},/' >> {REMOTE_SERVER_PACKAGE_COUNTS_LOG}",
         ],
         check=True,
     )
 
 
-def collect_package_buffer_counts_for_client(server_machine, client_id):
+def collect_package_buffer_counts_for_client(
+    server_machine, client_id, elapsed_seconds
+):
     """
     Collect package buffer counts for computer with ID `client_id` from the
-    server_machine's `computer_packages` table.
+    server_machine's `computer_packages_buffer` table with timestamp.
 
     NOTE: cd /tmp to avoid annoying output from psql trying to set homedir
     """
@@ -133,7 +135,7 @@ def collect_package_buffer_counts_for_client(server_machine, client_id):
             f"CARDINALITY(security) as len_security, "
             f"CARDINALITY(not_security) as len_not_security "
             f"FROM computer_packages_buffer WHERE computer_id={client_id}"
-            f"\" | head -n 3 | tail -n 1 | sed 's/|/,/g' | sed 's/ //g' >> {REMOTE_SERVER_PACKAGE_BUFFER_COUNTS_LOG}",
+            f"\" | head -n 3 | tail -n 1 | sed 's/|/,/g' | sed 's/ //g' | sed 's/^/{elapsed_seconds},/' >> {REMOTE_SERVER_PACKAGE_BUFFER_COUNTS_LOG}",
         ],
         check=True,
     )
@@ -227,27 +229,34 @@ def test_profile_landscape_client(
     start_time = datetime.now()
     print(f"\nStarting CPU profiling for { profiling_config.iterations} iterations...")
 
-    for _ in tqdm(range(profiling_config.iterations)):
+    for i in tqdm(range(profiling_config.iterations)):
+        # Calculate elapsed seconds since start
+        elapsed_seconds = (datetime.now() - start_time).total_seconds()
+
         # Run all data collection operations concurrently
         with ThreadPoolExecutor(max_workers=4) as executor:
             futures = [
                 executor.submit(
                     collect_client_cpu_usage,
                     registered_client.client_lxd_instance_name,
+                    elapsed_seconds,
                 ),
                 executor.submit(
                     collect_client_package_database_size,
                     registered_client.client_lxd_instance_name,
+                    elapsed_seconds,
                 ),
                 executor.submit(
                     collect_package_counts_for_client,
                     registered_client.server_lxd_instance_name,
                     registered_client.client_id,
+                    elapsed_seconds,
                 ),
                 executor.submit(
                     collect_package_buffer_counts_for_client,
                     registered_client.server_lxd_instance_name,
                     registered_client.client_id,
+                    elapsed_seconds,
                 ),
             ]
             # Wait for all to complete and raise any exceptions
