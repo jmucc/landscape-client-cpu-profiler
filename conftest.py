@@ -70,6 +70,16 @@ class TerraformOutputs:
     IP address of the client instance.
     """
 
+    server_lxd_image: str
+    """
+    The LXD image used for the server.
+    """
+
+    client_lxd_image: str
+    """
+    The LXD image used for the client.
+    """
+
     @classmethod
     def from_terraform_json(cls, tf_json: dict) -> "TerraformOutputs":
         """Create TerraformOutputs from terraform output -json result."""
@@ -80,6 +90,8 @@ class TerraformOutputs:
             pro_token=tf_json["pro_token"]["value"],
             server_ipv4_address=tf_json["server_ipv4_address"]["value"],
             client_ipv4_address=tf_json["client_ipv4_address"]["value"],
+            server_lxd_image=tf_json["server_lxd_image"]["value"],
+            client_lxd_image=tf_json["client_lxd_image"]["value"],
         )
 
 

@@ -28,8 +28,8 @@ python_files = "test_*.py"
 python_functions = "test_*"
 
 [tool.profiler.profiling]
-iterations = 500
-iteration_delay_seconds = 0.25
+iterations = 8000
+iteration_delay_seconds = 0.33
 
 [tool.profiler.client]
 computer_title = "cpu-profiler-client"

@@ -27,3 +27,13 @@ output "client_ipv4_address" {
   description = "IPv4 address of the client"
   value       = lxd_instance.client.ipv4_address
 }
+
+output "server_lxd_image" {
+  description = "LXD image used for the server instance"
+  value       = var.landscape_server_image
+}
+
+output "client_lxd_image" {
+  description = "LXD image used for the client instance"
+  value       = var.landscape_client_image
+}

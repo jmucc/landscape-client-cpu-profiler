@@ -12,7 +12,7 @@ from pathlib import Path
 
 from tqdm import tqdm
 
-from conftest import RegisteredClient, ProfilingConfig, ClientConfig
+from conftest import RegisteredClient, ProfilingConfig, ClientConfig, TerraformOutputs
 
 
 # Remote log paths on LXD instances
@@ -221,6 +221,7 @@ def test_profile_landscape_client(
     registered_client: RegisteredClient,
     profiling_config: ProfilingConfig,
     client_config: ClientConfig,
+    terraform_outputs: TerraformOutputs,
 ):
     """
     Main profiling test that runs the CPU profiling loop.
@@ -277,6 +278,10 @@ def test_profile_landscape_client(
     test_params = {
         "profiling": asdict(profiling_config),
         "client": asdict(client_config),
+        "infrastructure": {
+            "server_lxd_image": terraform_outputs.server_lxd_image,
+            "client_lxd_image": terraform_outputs.client_lxd_image,
+        },
         "start_time": start_time.isoformat(),
         "end_time": end_time.isoformat(),
     }
