@@ -52,12 +52,70 @@ def load_comma_delimited_file(filepath):
     return timestamps, values
 
 
+def load_cpu_time_file(filepath):
+    """Load cpu_time.log and calculate cumulative CPU-seconds over time.
+
+    Format: timestamp,pid,utime_seconds,stime_seconds
+    Returns cumulative total CPU time (user + system) for all process instances.
+
+    Strategy: Track the maximum CPU time for each PID (its final state before exit),
+    then sum those max values across all PIDs to get total cumulative CPU consumption.
+    """
+    from collections import defaultdict
+
+    # Track all measurements for each PID
+    pid_data = defaultdict(lambda: {"timestamps": [], "total_cpu": []})
+
+    with open(filepath, "r") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+
+            try:
+                parts = line.split(",")
+                timestamp = float(parts[0])
+                pid = int(parts[1])
+                utime = float(parts[2])
+                stime = float(parts[3])
+                total_cpu = utime + stime
+
+                pid_data[pid]["timestamps"].append(timestamp)
+                pid_data[pid]["total_cpu"].append(total_cpu)
+            except (ValueError, IndexError):
+                continue
+
+    # Get all unique timestamps
+    all_timestamps = set()
+    for pid_info in pid_data.values():
+        all_timestamps.update(pid_info["timestamps"])
+
+    timestamps = sorted(all_timestamps)
+    cumulative_cpu_time = []
+
+    # For each timestamp, calculate cumulative CPU time
+    for ts in timestamps:
+        total = 0.0
+        # For each PID, sum the max CPU time seen so far (up to and including ts)
+        for pid, pid_info in pid_data.items():
+            max_cpu_for_pid = 0.0
+            for i, pid_ts in enumerate(pid_info["timestamps"]):
+                if pid_ts <= ts:
+                    max_cpu_for_pid = max(max_cpu_for_pid, pid_info["total_cpu"][i])
+            total += max_cpu_for_pid
+
+        cumulative_cpu_time.append(total)
+
+    return timestamps, cumulative_cpu_time
+
+
 def load_results_directory(results_dir):
     """Load all log files from a results directory into a pandas DataFrame with timestamps as index."""
     results_path = Path(results_dir)
 
     files = {
         "cpu_usage": ("cpu_usage.log", load_single_value_file),
+        "cpu_time": ("cpu_time.log", load_cpu_time_file),
         "db_size": ("db_size.log", load_single_value_file),
         "package_counts": ("package_counts.log", load_comma_delimited_file),
         "package_buffer_counts": (
@@ -110,8 +168,8 @@ def normalize_series(series):
 
 
 def plot_dataframe(df, output_file="plot.png"):
-    """Plot CPU usage, package counts, and database size on separate subplots with shared x-axis."""
-    fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(16, 14), sharex=True)
+    """Plot CPU usage, CPU time, package counts, and database size on separate subplots with shared x-axis."""
+    fig, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, figsize=(16, 18), sharex=True)
 
     # Top plot: CPU usage (raw percentage)
     ax1.plot(
@@ -128,8 +186,23 @@ def plot_dataframe(df, output_file="plot.png"):
     ax1.legend()
     ax1.grid(True, alpha=0.3)
 
-    # Middle plot: Package counts
+    # Second plot: Cumulative CPU time (CPU-seconds)
     ax2.plot(
+        df.index,
+        df["cpu_time"],
+        linestyle="-",
+        linewidth=1.5,
+        alpha=0.7,
+        label="Cumulative CPU Time",
+        color="tab:purple",
+    )
+    ax2.set_ylabel("CPU Time (seconds)")
+    ax2.set_title("Cumulative CPU Time (User + System)")
+    ax2.legend()
+    ax2.grid(True, alpha=0.3)
+
+    # Third plot: Package counts
+    ax3.plot(
         df.index,
         df["package_counts"],
         linestyle="-",
@@ -138,7 +211,7 @@ def plot_dataframe(df, output_file="plot.png"):
         label="Package Counts",
         color="tab:green",
     )
-    ax2.plot(
+    ax3.plot(
         df.index,
         df["package_buffer_counts"],
         linestyle="-",
@@ -147,13 +220,13 @@ def plot_dataframe(df, output_file="plot.png"):
         label="Package Buffer Counts",
         color="tab:orange",
     )
-    ax2.set_ylabel("Package Count")
-    ax2.set_title("Package Counts Over Time")
-    ax2.legend()
-    ax2.grid(True, alpha=0.3)
+    ax3.set_ylabel("Package Count")
+    ax3.set_title("Package Counts Over Time")
+    ax3.legend()
+    ax3.grid(True, alpha=0.3)
 
     # Bottom plot: Database size
-    ax3.plot(
+    ax4.plot(
         df.index,
         df["db_size"],
         linestyle="-",
@@ -162,11 +235,11 @@ def plot_dataframe(df, output_file="plot.png"):
         label="DB Size",
         color="tab:blue",
     )
-    ax3.set_xlabel("Time (seconds)")
-    ax3.set_ylabel("Client database Size")
-    ax3.set_title("Client database Size Over Time")
-    ax3.legend()
-    ax3.grid(True, alpha=0.3)
+    ax4.set_xlabel("Time (seconds)")
+    ax4.set_ylabel("Client database Size")
+    ax4.set_title("Client database Size Over Time")
+    ax4.legend()
+    ax4.grid(True, alpha=0.3)
 
     plt.tight_layout()
     plt.savefig(output_file)
