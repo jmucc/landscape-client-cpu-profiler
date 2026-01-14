@@ -108,10 +108,3 @@ By default this will use the most recent data in `results/`. Pass a path in resu
 poetry run python plot.py results/Mon_Jan_12_15:12:11
 ```
 
-The area under the CPU%-per-second graph can be used as an approximate comparison of CPU efficiency between different package reporting scenarios. Use the following script to calculate:
-
-```bash
-poetry run python calculate_cpu_seconds.py results/Mon_Jan_12_15:12:11
-```
-
-A higher number indicates more CPU usage during the package reporting process. For an accurate comparison, ensure that package reporting has finished. This is indicated when the package data for the client machine reaches a steady state.
